@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.jwn.app/TM00458/Operations/scripts/ns-report-gen/apiaudit"
-	"git.jwn.app/TM00458/Operations/scripts/ns-report-gen/report"
+	"github.com/JeremyPDonahue/custom_reporter/tree/main/apiaudit"
+	"github.com/JeremyPDonahue/custom_reporter/tree/main/report"
 )
 
 func main() {
