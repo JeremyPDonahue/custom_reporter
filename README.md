@@ -2,9 +2,6 @@
 
 >Ensure you are running go version go1.19.4
 
-TODO: Change the name of this tool to something like custom_reporter,
-because it does more than just produce a NS report.
-
 This tool currently generates one of two reports in CSV format.
 1. Namespace Report
 2. API Audit Report
