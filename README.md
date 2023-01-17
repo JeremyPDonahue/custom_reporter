@@ -1,4 +1,4 @@
-# Namespace Report Generator
+# custom_reporter
 
 >Ensure you are running go version go1.19.4
 
