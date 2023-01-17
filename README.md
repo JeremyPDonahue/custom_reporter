@@ -53,6 +53,6 @@ that is included in your system `PATH`.
 
 _Not Working?_
 ------------
-- Are you on the VPN?
+- Do you need to be on a VPN?
 - [Do you have Go installed?](https://go.dev/doc/install)
-- [Are you set up to query the clusters? (do you have your kubeconfigs setup under $HOME/.kube?)
+- Are you set up to query the clusters? (do you have your kubeconfigs setup under $HOME/.kube?)
