@@ -55,6 +55,4 @@ _Not Working?_
 ------------
 - Are you on the VPN?
 - [Do you have Go installed?](https://go.dev/doc/install)
-- Have you logged into AWS? (aws-okta login)
-- [Are you set up to query the clusters?](https://gitlab.nordstrom.com/dev-compute/cluster-registry/-/merge_requests/42/diffs)
-- What are the 'user' fields set to in your ~/.kube/config file (legacy clusters only) --- e.g. barcelona_sudo
+- [Are you set up to query the clusters? (do you have your kubeconfigs setup under $HOME/.kube?)
