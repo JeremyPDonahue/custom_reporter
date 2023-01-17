@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JeremyPDonahue/custom_reporter/tree/main/servicenow"
+	"github.com/JeremyPDonahue/custom_reporter/servicenow"
 )
 
 // GoGrabServiceNowData makes API requests to ServiceNow using appid/ns

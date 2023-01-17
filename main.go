@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/JeremyPDonahue/custom_reporter/tree/main/apiaudit"
-	"github.com/JeremyPDonahue/custom_reporter/tree/main/report"
+	"github.com/JeremyPDonahue/custom_reporter/apiaudit"
+	"github.com/JeremyPDonahue/custom_reporter/report"
 )
 
 func main() {
