@@ -39,7 +39,7 @@ func main() {
 
 }
 
-// The nsReport function is used to generate the Namespace Report when the flag -nsr is passed.
+// nsReport is used to generate the Namespace Report when the flag -nsr is passed.
 // It performs the following operations:
 // 1. Calls the SearchKubeDir function to get a list of paths to kube config files located in the "./kube" directory
 // 2. If there is an error getting the paths, it prints the error
@@ -70,7 +70,7 @@ func nsReport() {
 	report.CreateCsvFile(customerData, clusterList)
 }
 
-// This function performs an API audit on Kubernetes resources.
+// apiAudit performs an API audit on Kubernetes resources.
 // It uses the report.SearchKubeDir() function to source your kubeconfig, and if there is an error it will print it out.
 // The function then iterates over the kubeconfigs using the apiaudit.IterateOverPaths() function, passing in the resource type.
 // Finally, it creates a CSV file with the results of the audit using the apiaudit.CreateAPIAuditCSV() function.
@@ -87,7 +87,7 @@ func apiAudit(resources []string) {
 	apiaudit.CreateAPIAuditCSV()
 }
 
-// This function takes in a slice of strings representing file paths and returns a new slice of strings containing the base of each file path.
+// extractLastPath takes in a slice of strings representing file paths and returns a new slice of strings containing the base of each file path.
 // The base of a file path is the last element of the path, which is usually the file name.
 // For example, if the input is a slice of paths ["/Users/yx4h/.kube/nsk-beet-prod", "/Users/yx4h/.kube/nsk-curry-nonprod"],
 // the output will be a slice containing ["nsk-beet-prod", "nsk-beet-nonprod"]
@@ -101,15 +101,23 @@ func extractLastPath(paths []string) []string {
 
 func checkAWSLogin() {
 	// check if the user is logged in
-	output, err := exec.Command("aws-okta", "list").Output()
-	if err != nil {
-		fmt.Println("Error checking login status:", err)
-		return
-	}
+	awsOkta := exec.Command("aws-okta", "info")
+
+	awk := exec.Command("awk", "NR==3 {print $NF}")
+
+	awk.Stdin, _ = awsOkta.StdoutPipe()
+
+	awk.Start()
+
+	awsOkta.Run()
+
+	awk.Wait()
+
+	output, _ := awk.Output()
 
 	// check the output for "logged in"
 	outputString := string(output)
-	if !strings.Contains(outputString, "arn:aws:iam") {
+	if !strings.Contains(outputString, "-") {
 		fmt.Println("Not logged in, running 'aws-okta login'...")
 		// if not logged in, run the login command
 		loginCmd := exec.Command("aws-okta", "login")
