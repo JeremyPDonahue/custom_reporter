@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+
 type ResourceJSON struct {
 	APIVersion string `json:"apiVersion"`
 	Kind       string `json:"kind"`
@@ -94,6 +95,7 @@ func CollectReourceJSON(paths []string, resource string) []ResourceJSON {
 
 		var jr ResourceJSON
 
+
 		output, err := cmd.Output()
 		if err != nil {
 			fmt.Println(err)
@@ -107,10 +109,10 @@ func CollectReourceJSON(paths []string, resource string) []ResourceJSON {
 			}
 			resourceStructs = append(resourceStructs, jr)
 		}
-
 	}
 	return resourceStructs
 }
+
 
 type APIAudit struct {
 	Cluster      string
