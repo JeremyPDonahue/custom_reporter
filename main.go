@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -81,10 +82,12 @@ func apiAudit(resources []string) {
 	}
 
 	for _, resource := range resources {
+		// f := apiaudit.collectReourceJSON()
 
-		apiaudit.IterateOverPaths(filePathsToKube, resource)
+		filtered := apiaudit.FilterForAPI(apiaudit.CollectReourceJSON(filePathsToKube, resource), "v1beta1")
+		files.structsToCSV(filtered)
 	}
-	apiaudit.CreateAPIAuditCSV()
+	// apiaudit.CreateAPIAuditCSV()
 }
 
 // extractLastPath takes in a slice of strings representing file paths and returns a new slice of strings containing the base of each file path.
@@ -100,24 +103,16 @@ func extractLastPath(paths []string) []string {
 }
 
 func checkAWSLogin() {
-	// check if the user is logged in
-	awsOkta := exec.Command("aws-okta", "info")
-
-	awk := exec.Command("awk", "NR==3 {print $NF}")
-
-	awk.Stdin, _ = awsOkta.StdoutPipe()
-
-	awk.Start()
-
-	awsOkta.Run()
-
-	awk.Wait()
-
-	output, _ := awk.Output()
+	cmd := "aws-okta info | awk 'NR==3 {print $NF}'"
+	out, err := exec.Command("bash", "-c", cmd).Output()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	// check the output for "logged in"
-	outputString := string(output)
-	if !strings.Contains(outputString, "-") {
+	outputString := string(out)
+	if strings.Contains(outputString, "-") {
 		fmt.Println("Not logged in, running 'aws-okta login'...")
 		// if not logged in, run the login command
 		loginCmd := exec.Command("aws-okta", "login")
