@@ -1,39 +1,84 @@
 package apiaudit
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
 
-func RefreshFiles(dir string) {
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		os.Mkdir(dir, os.ModePerm)
-	} else {
-		d, err := os.Open(dir)
-		if err != nil {
-			fmt.Println("Could not open jsonFiles directory")
-			fmt.Println(err)
-		}
-		defer d.Close()
 
-		names, err := d.Readdirnames(-1)
-		if err != nil {
-			fmt.Println("Could not enumerate the contents of jsonFiles")
-			fmt.Println(err)
-		}
+type ResourceJSON struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	Metadata   struct {
+		Annotations struct {
+			KonghqComStripPath                          string `json:"konghq.com/strip-path"`
+			KubectlKubernetesIoLastAppliedConfiguration string `json:"kubectl.kubernetes.io/last-applied-configuration"`
+			KubernetesIoIngressClass                    string `json:"kubernetes.io/ingress.class"`
+		} `json:"annotations"`
+		CreationTimestamp time.Time `json:"creationTimestamp"`
+		Generation        int       `json:"generation"`
+		Labels            struct {
+			App        string `json:"app"`
+			AppID      string `json:"app-id"`
+			AppVersion string `json:"app-version"`
+			ProjectID  string `json:"project-id"`
+			SpRelease  string `json:"sp-release"`
+		} `json:"labels"`
+		Name            string `json:"name"`
+		Namespace       string `json:"namespace"`
+		ResourceVersion string `json:"resourceVersion"`
+		UID             string `json:"uid"`
+	} `json:"metadata"`
+	Spec struct {
+		Rules []struct {
+			Host string `json:"host"`
+			HTTP struct {
+				Paths []struct {
+					Backend struct {
+						Service struct {
+							Name string `json:"name"`
+							Port struct {
+								Number int `json:"number"`
+							} `json:"port"`
+						} `json:"service"`
+					} `json:"backend"`
+					Path     string `json:"path"`
+					PathType string `json:"pathType"`
+				} `json:"paths"`
+			} `json:"http"`
+		} `json:"rules"`
+		TLS []struct {
+			Hosts      []string `json:"hosts"`
+			SecretName string   `json:"secretName"`
+		} `json:"tls"`
+	} `json:"spec"`
+	Status struct {
+		LoadBalancer struct {
+			Ingress []struct {
+				Hostname string `json:"hostname"`
+			} `json:"ingress"`
+		} `json:"loadBalancer"`
+	} `json:"status"`
+}
 
-		for _, name := range names {
-			err = os.Remove(filepath.Join(dir, name))
-			if err != nil {
-				fmt.Printf("Could not remove %s", name)
-				fmt.Println(err)
-			}
+func GetNamespaces(paths []string) [][]string {
+	var namespaces [][]string
+	for _, path := range paths {
+
+		output, err := exec.Command("sh", "-c", fmt.Sprintf("kubectl --kubeconfig %s get namespaces --output=name", path)).Output()
+		if err != nil {
+			fmt.Println("Could not get namespaces")
+			os.Exit(1)
 		}
+		namespaces = append(namespaces, strings.Split(string(output), "\n"))
 	}
+	return namespaces
 }
 
 //  collectReourceJSON function is used to gather information from our kubernetes clusters in json format.
@@ -42,115 +87,78 @@ func RefreshFiles(dir string) {
 //	Then it uses the kubectl command to collect information about the specified resource in json format.
 //	The output of the command is saved to a file named "<cluster>-<resource>.json" in the jsonFiles directory.
 //	Finally, the function prints a message indicating that the data has been received for the specified cluster and resource.
-func collectReourceJSON(path, resource string) {
-	jsonFiles := "jsonFiles"
-
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("kubectl --kubeconfig %s get %s -A -o json | jq -c", path, resource))
-	stdout, err := cmd.Output()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	directories := strings.Split(path, "/")
-	cluster := directories[len(directories)-1]
-
-	file, err := os.Create(jsonFiles + "/" + cluster + "-" + resource + ".json")
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer file.Close()
-
-	_, err = file.Write(stdout)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	current := fmt.Sprintf("data received for: %s for %s", cluster, resource)
-	fmt.Println(current)
-}
-
-// IterateOverPaths function takes in a list of paths and a resource as input and performs the following operations:
-// 1. Iterates over each path in the 'paths' slice
-// 2. For each path, calls the 'collectReourceJSON' function passing the current path and the resource
-// 3. For each path in the 'paths' slice, it collects the data for the specified resource
-func IterateOverPaths(paths []string, resource string) {
-
+func CollectReourceJSON(paths []string, resource string) []ResourceJSON {
+	var resourceStructs []ResourceJSON
 	for _, path := range paths {
-		collectReourceJSON(path, resource)
-	}
 
+		cmd := exec.Command("sh", "-c", fmt.Sprintf("kubectl --kubeconfig %s get %s -A -o json | jq -c '(.items[])'", path, resource))
+
+		var jr ResourceJSON
+
+
+		output, err := cmd.Output()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		decoder := json.NewDecoder(bytes.NewReader(output))
+		for {
+
+			if err := decoder.Decode(&jr); err != nil {
+				break
+			}
+			resourceStructs = append(resourceStructs, jr)
+		}
+	}
+	return resourceStructs
 }
 
-// GetFileList function is used to get a list of files in a specified directory.
-// It takes in a 'directory' string as input and performs the following operations:
-// 1. Runs a command "ls directory/ | grep nsk" using the exec package
-// 2. Captures the output of the command execution
-// 3. Using the strings package, splits the output into a list of individual file names
-// 4. Returns the list of file names as a slice of strings
-func GetFileList(directory string, toGrepFor string) []string {
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("ls %s/ | grep %s", directory, toGrepFor))
-	output, _ := cmd.Output()
-	files := strings.Fields(string(output))
-	return files
+
+type APIAudit struct {
+	Cluster      string
+	ResourceName string
+	Namespace    string
+	Type         string
+	AppID        string
+	ProjectID    string
+	ApiVersion   string
 }
 
-// WriteToFile function is used to write to a file with a specific name.
-// It takes in a 'fileName' and a 'header' string as input and performs the following operations:
-// 1. Get the current date
-// 2. Append the date to the fileName
-// 3. Open or create a new file with the fileName
-// 4. If there is an error opening the file, it will return an error message
-// 5. Append the header + new line to the file
-// 6. If there is an error writing to the file, it will return an error message
-// 7. Close the file
-// 8. Returns the fileName
-// This function is useful for creating a file with a specific name and adding a header to it.
-func WriteToFile(fileName string, header string) string {
-	now := time.Now()
-	year, month, day := now.Date()
-	fileName = fmt.Sprintf("%s_%d_%d_%d.csv", fileName, year, month, day)
+func FilterForAPI(resourceJSON []ResourceJSON, apiVersion string) []APIAudit {
 
-	if _, err := os.Stat(fileName); !os.IsNotExist(err) {
-		os.Remove(fileName)
+	c := regexp.MustCompile("nsk-(.*)-(prod|nonprod)")
+	a := regexp.MustCompile(apiVersion)
+
+	var filteredJSONResponses []APIAudit
+
+	for _, resource := range resourceJSON {
+
+		host := resource.Spec.Rules[0].Host
+		cluster := c.FindString(host)
+		lastAppliedConfiguration := resource.Metadata.Annotations.KubectlKubernetesIoLastAppliedConfiguration
+
+		if api := a.FindString(lastAppliedConfiguration); api != "" {
+			cmd := exec.Command("bash", "-c", fmt.Sprintf("echo '%s' | jq '([\"%s\", .metadata.name, .metadata.namespace, .kind, .metadata.labels.\"app-id\", .metadata.labels.\"project-id\", .apiVersion]) | @csv'", lastAppliedConfiguration, cluster))
+
+			output, err := cmd.Output()
+			if err != nil {
+				fmt.Println(err)
+			}
+			data := strings.Split(string(output), ",")
+			var api APIAudit
+
+			api.Cluster = data[0]
+			api.ResourceName = data[1]
+			api.Namespace = data[2]
+			api.Type = data[3]
+			api.AppID = data[4]
+			api.ProjectID = data[5]
+			api.ApiVersion = data[6]
+
+			filteredJSONResponses = append(filteredJSONResponses, api)
+
+		}
 	}
 
-	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Sprintf("Unable to open %s", fileName)
-		fmt.Println(err)
-	}
-	defer f.Close()
-	if _, err := f.WriteString(header + "\n"); err != nil {
-		fmt.Sprintf("Unable to write to %s", fileName)
-		fmt.Println(err)
-	}
-
-	return fileName
-}
-
-// CreateAPIAuditCSV function is used to create a csv file containing information regarding those with v1beta1.
-// TODO: Abstract this away from being specific to v1beta1 so we can look for anything.
-// It performs the following operations:
-// 1. Calls the GetFileList function to get a list of files in the "jsonFiles" directory with the substring "nsk"
-// 2. Creates a header for the csv file with specific columns
-// 3. Calls the WriteToFile function to create and/or open a file named "apiAudit" and append the header to it.
-// 4. Iterates over the list of files returned from step 1
-// 5. For each file, it runs a jq command to extract specific information from the file
-// 6. Appends the extracted information to the "apiAudit" file in csv format
-func CreateAPIAuditCSV() {
-	filesToParse := GetFileList("jsonFiles/", "nsk")
-	header := "\"Cluster\",\"Name\",\"Namespace\",\"Kind\",\"App-ID\",\"Project-ID\",\"API Version\""
-	fileName := WriteToFile("apiAudit", header)
-
-	for _, file := range filesToParse {
-
-		withoutSuffix := strings.TrimSuffix(file, ".json")
-		lastIndex := strings.LastIndex(withoutSuffix, "-")
-		cluster := file[:lastIndex]
-
-		jqCommand := fmt.Sprintf("jq -r '(.items[] | [.metadata.annotations.\"kubectl.kubernetes.io/last-applied-configuration\" ]) | select(try(.[] | test(\"v1beta1\"))) | .[] | fromjson | [\"%s\", .metadata.name, .metadata.namespace, .kind, .metadata.labels.\"app-id\", .metadata.labels.\"project-id\", .apiVersion] | @csv' jsonFiles/%s >> %s", cluster, file, fileName)
-		cmd := exec.Command("bash", "-c", jqCommand)
-		cmd.Run()
-
-	}
+	return filteredJSONResponses
 }
