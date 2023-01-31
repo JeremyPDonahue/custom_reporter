@@ -42,14 +42,6 @@ func main() {
 
 }
 
-// The nsReport function is used to generate the Namespace Report when the flag -nsr is passed.
-// It performs the following operations:
-// 1. Calls the SearchKubeDir function to get a list of paths to kube config files located in the "./kube" directory
-// 2. If there is an error getting the paths, it prints the error
-// 3. Calls the CreateKubectlCommands function passing the list of paths, to create a list of kubectl commands
-// 4. Calls the GoGrabAppIds function passing the list of kubectl commands, to get a list of clusters and their associated app-ids
-// 5. Calls the GoGrabServiceNowData function passing the list of clusters and app-ids to get additional data about the clusters from ServiceNow
-// 6. Calls the CreateCsvFile function passing the data returned from the previous step and the list of paths to kube config files, to generate an excel file containing the report.
 func nsReport() {
 
 	// Grabbing the list of clusters from your ./kube directory
@@ -73,10 +65,6 @@ func nsReport() {
 	report.CreateCsvFile(customerData, clusterList)
 }
 
-// This function performs an API audit on Kubernetes resources.
-// It uses the report.SearchKubeDir() function to source your kubeconfig, and if there is an error it will print it out.
-// The function then iterates over the kubeconfigs using the apiaudit.IterateOverPaths() function, passing in the resource type.
-// Finally, it creates a CSV file with the results of the audit using the apiaudit.CreateAPIAuditCSV() function.
 func apiAudit(resources []string) {
 	var filePathsToKube, err = report.SearchKubeDir()
 	if err != nil {

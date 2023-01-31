@@ -36,7 +36,7 @@ func CollectAndFilterResourceJSON(paths []string, resource, apiVersion string) [
 //	Finally, the function prints a message indicating that the data has been received for the specified cluster and resource.
 func CollectIngressJSON(paths []string, resource string) []IngressJSON {
 	var resourceStructs []IngressJSON
-	fmt.Println("Collecting JSON for Ingress objects")
+	fmt.Print(".")
 
 	for _, path := range paths {
 		fmt.Print(".")
@@ -66,7 +66,7 @@ func CollectIngressJSON(paths []string, resource string) []IngressJSON {
 
 func CollectRoleJSON(paths []string, resource string) []RoleJSON {
 	var resourceStructs []RoleJSON
-	fmt.Println("Collecting JSON for Role objects")
+	fmt.Print(".")
 
 	for _, path := range paths {
 		fmt.Print(".")
@@ -97,7 +97,7 @@ func CollectRoleJSON(paths []string, resource string) []RoleJSON {
 
 func CollectRoleBindingJSON(paths []string, resource string) []RoleBindingJSON {
 	var resourceStructs []RoleBindingJSON
-	fmt.Println("Collecting JSON for RoleBinding objects")
+	fmt.Print(".")
 
 	for _, path := range paths {
 		fmt.Print(".")
@@ -136,7 +136,6 @@ func FilterIngressForAPI(resourceJSON []IngressJSON, apiVersion string) []APIAud
 	fmt.Println("\n Filtering JSON for Ingress objects")
 
 	for _, resource := range resourceJSON {
-		fmt.Print(".")
 
 		host := resource.Spec.Rules[0].Host
 		sp := resource.Metadata.Labels.SpRelease
@@ -185,10 +184,9 @@ func FilterRoleForAPI(resourceJSON []RoleJSON, apiVersion string) []APIAudit {
 	a := regexp.MustCompile(apiVersion)
 
 	var filteredJSONResponses []APIAudit
-	fmt.Println("\n Filtering JSON for Role objects")
+	fmt.Print(".")
 
 	for _, resource := range resourceJSON {
-		fmt.Print(".")
 
 		sp := resource.Metadata.Labels.SpRelease
 		cluster := resource.Cluster
@@ -236,10 +234,9 @@ func FilterRoleBindingForAPI(resourceJSON []RoleBindingJSON, apiVersion string) 
 	a := regexp.MustCompile(apiVersion)
 
 	var filteredJSONResponses []APIAudit
-	fmt.Println("\n Filtering JSON for Rolebinding objects")
+	fmt.Print(".")
 
 	for _, resource := range resourceJSON {
-		fmt.Print(".")
 
 		sp := resource.Metadata.Labels.SpRelease
 		cluster := resource.Cluster
@@ -282,7 +279,7 @@ func FilterRoleBindingForAPI(resourceJSON []RoleBindingJSON, apiVersion string) 
 }
 
 func GetGitLabJSON(projectID string) (string, string) {
-	fmt.Println("\n Retrieving JSON from GitLab")
+	fmt.Print(".")
 	token, _ := os.LookupEnv("GITLAB_API_TOKEN")
 	api_endpoint, _ := os.LookupEnv("GITLAB_API")
 	cmd := exec.Command("sh", "-c", fmt.Sprintf("curl --header \"Authorization: Bearer %s\" %s%s", token, api_endpoint, projectID))
@@ -297,7 +294,7 @@ func GetArchivedStatus(jsonStr, projectID string) (bool, error) {
 	if jsonStr == "" {
 		return false, nil
 	}
-	fmt.Println("\n Parsing GitLab JSON for archive status")
+	fmt.Print(".")
 	if jsonStr[0] == '[' && jsonStr[len(jsonStr)-1] == ']' {
 		jsonStr = jsonStr[1 : len(jsonStr)-1]
 	}
