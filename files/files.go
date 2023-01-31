@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -14,18 +15,18 @@ import (
 // It uses the exec package to execute a shell command that lists all the files in the directory and
 // filters them based on the passed values of toGrepFor and toExclude.
 // It returns a slice of strings representing the filtered list of files in the directory.
-func GetFileList(directory, toGrepFor, toExclude string) []string {
+func GetFileList(directory, toGrepFor string) []string {
 
 	var cmd *exec.Cmd
-	if toExclude == "" {
-		cmd = exec.Command("sh", "-c", fmt.Sprintf("ls %s/ | grep %s", directory, toGrepFor))
-	}
+
+	cmd = exec.Command("sh", "-c", fmt.Sprintf("ls %s/ | grep %s", directory, toGrepFor))
+
 	output, _ := cmd.Output()
 	files := strings.Fields(string(output))
 	return files
 }
 
-func WriteToFile(fileName, content string) string {
+func WriteToFile(fileName, content string) {
 	now := time.Now()
 	year, month, day := now.Date()
 	fileName = fmt.Sprintf("%s_%d_%d_%d.csv", fileName, year, month, day)
@@ -39,46 +40,59 @@ func WriteToFile(fileName, content string) string {
 		fmt.Sprintf("Unable to write to %s", fileName)
 		fmt.Println(err)
 	}
-
-	return fileName
 }
 
-func structsToCSV(structSlice interface{}, fileName string) {
-
-	structType := reflect.TypeOf(structSlice).Elem().Elem()
+func HeadersFromStructFields(struc interface{}) string {
 	var headers string
-	for i := 0; i < structType.NumField(); i++ {
-		headers += structType.Field(i).Name + ","
+	for i := 0; i < reflect.TypeOf(struc).NumField(); i++ {
+		headers += reflect.TypeOf(struc).Field(i).Name + ","
 	}
-	headers = headers[:len(headers)-1]
-	fileName = WriteToFile(fileName, headers string)
+	headers = strings.TrimSuffix(headers, ",")
+	return headers
+}
 
-	data := [][]string{}
-
-	structValue := reflect.ValueOf(structSlice).Elem()
-
-	for i := 0; i < structValue.Len(); i++ {
-		row := []string{}
-
-		for j := 0; j < structType.NumField(); j++ {
-			row = append(row, fmt.Sprint(structValue.Index(i).Field(j).Interface()))
-		}
-	
-		data = append(data, row)
+func StructsToAPICSV(structs []interface{}, fileName string) error {
+	now := time.Now()
+	year, month, day := now.Date()
+	fileName = fmt.Sprintf("%s_%d_%d_%d.csv", fileName, year, month, day)
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Trouble creating file")
+		os.Exit(1)
 	}
-
-	file, _ := os.Open(fileName)
 	defer file.Close()
+
 	writer := csv.NewWriter(file)
+	defer writer.Flush()
 
+	// writer.Write(headers)
+	var i int
+	for _, struc := range structs {
+		var fields []string
+		val := reflect.ValueOf(struc)
+		fmt.Sprintf("Let's count the structs: %d", i)
+		i++
+		for i := 0; i < val.NumField(); i++ {
+			fmt.Sprintf("Let's count the values: %d", i)
 
-	writer.Write([]string{headers})
-	writer.WriteAll(data)
-	writer.Flush()
+			valField := val.Field(i)
+			fields = append(fields, valField.Interface().(string))
+		}
 
+		writer.Write(fields)
+	}
 
+	return nil
+}
 
-	
-
-
+// This function takes in a slice of strings representing file paths and returns a new slice of strings containing the base of each file path.
+// The base of a file path is the last element of the path, which is usually the file name.
+// For example, if the input is a slice of paths ["/Users/yx4h/.kube/nsk-beet-prod", "/Users/yx4h/.kube/nsk-curry-nonprod"],
+// the output will be a slice containing ["nsk-beet-prod", "nsk-beet-nonprod"]
+func ExtractLastPaths(paths []string) []string {
+	var lastPaths []string
+	for _, path := range paths {
+		lastPaths = append(lastPaths, filepath.Base(path))
+	}
+	return lastPaths
 }

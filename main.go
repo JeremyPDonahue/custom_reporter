@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/JeremyPDonahue/custom_reporter/apiaudit"
+	"github.com/JeremyPDonahue/custom_reporter/files"
 	"github.com/JeremyPDonahue/custom_reporter/report"
 )
+
+// var f []string = files.GetFileList("jsonFiles", "nsk")
 
 func main() {
 
@@ -65,7 +67,7 @@ func nsReport() {
 	// Using those appids to query servicenow
 	customerData := report.GoGrabServiceNowData(clusterNamespaces)
 
-	clusterList := extractLastPath(pathsToKubeConfigs)
+	clusterList := files.ExtractLastPaths(pathsToKubeConfigs)
 
 	// Generate excel files
 	report.CreateCsvFile(customerData, clusterList)
@@ -81,28 +83,24 @@ func apiAudit(resources []string) {
 		fmt.Println(err)
 	}
 
-	apiaudit.RefreshFiles("jsonFiles")
-
+	var i int
 	for _, resource := range resources {
-		// f := apiaudit.collectReourceJSON()
 
-		filtered := apiaudit.FilterForAPI(apiaudit.CollectReourceJSON(filePathsToKube, resource), "v1beta1")
-		files.structsToCSV(filtered)
+		filtered := apiaudit.CollectAndFilterResourceJSON(filePathsToKube, resource, "v1beta1")
+		filterInterface := make([]interface{}, len(filtered))
+		for i, v := range filtered {
+			filterInterface[i] = v
+		}
+		if i == 0 {
+			files.WriteToFile("apiAudit", files.HeadersFromStructFields(filterInterface[0]))
+			files.StructsToAPICSV(filterInterface, "apiAudit")
+			i++
+		} else {
+			files.StructsToAPICSV(filterInterface, "apiAudit")
+		}
+
 	}
-	// apiaudit.CreateAPIAuditCSV()
 
-}
-
-// This function takes in a slice of strings representing file paths and returns a new slice of strings containing the base of each file path.
-// The base of a file path is the last element of the path, which is usually the file name.
-// For example, if the input is a slice of paths ["/Users/yx4h/.kube/nsk-beet-prod", "/Users/yx4h/.kube/nsk-curry-nonprod"],
-// the output will be a slice containing ["nsk-beet-prod", "nsk-beet-nonprod"]
-func extractLastPath(paths []string) []string {
-	var lastPaths []string
-	for _, path := range paths {
-		lastPaths = append(lastPaths, filepath.Base(path))
-	}
-	return lastPaths
 }
 
 func checkAWSLogin() {
