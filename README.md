@@ -1,6 +1,6 @@
 # custom_reporter
 
-## This project has been uploaded to GitHub for demonstration purposes only. This is a copy of a non-sensitive project that I built to be used internally at my company. For that purpose I am removing any references specific to the internal organization.
+## This project has been uploaded to GitHub for demonstration purposes only. This is a copy of a non-sensitive project that I built to be used internally at my company. For that purpose I am removing any references specific to the internal organization. This will NOT be something you can download and use. It ONLY works internally within my organization, but is a demonstration of my programming skills for portfolio purposes.
 
 
 ## Setup:
